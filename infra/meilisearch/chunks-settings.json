@@ -1,0 +1,18 @@
+{
+  "searchableAttributes": ["content", "section", "title"],
+  "filterableAttributes": [
+    "applicable_chips",
+    "applicable_boards",
+    "ros_versions",
+    "source_tier",
+    "status",
+    "category",
+    "document_id"
+  ],
+  "sortableAttributes": ["created_at"],
+  "rankingRules": ["words", "typo", "proximity", "attribute", "sort", "exactness"],
+  "pagination": { "maxTotalHits": 1000 },
+  "typoTolerance": {
+    "minWordSizeForTypos": { "oneTypo": 4, "twoTypos": 8 }
+  }
+}

@@ -1,0 +1,229 @@
+version: "3.9"
+
+# ── Inference services (Stage 2) ───────────────────────────────────────────
+# Run on Jetson AGX Orin with CUDA.  Set model paths via .env or environment.
+#
+# Required env vars (create a .env file in this directory):
+#   KB_EMBEDDING_MODEL_PATH   path to bge-m3/model.onnx inside the container
+#   KB_EMBEDDING_TOKENIZER_PATH  path to bge-m3 tokenizer dir
+#   KB_RERANKER_MODEL_PATH    path to bge-reranker-v2-m3/model.onnx
+#   KB_RERANKER_TOKENIZER_PATH  path to bge-reranker-v2-m3 tokenizer dir
+#
+# Host model directory is mounted at /models (read-only).
+# Change MODELS_DIR to wherever you store the model files on the Jetson.
+
+x-inference-base: &inference-base
+  restart: unless-stopped
+  runtime: nvidia           # Jetson: use nvidia container runtime
+  environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+  volumes:
+    - ${MODELS_DIR:-/data/models}:/models:ro
+  networks:
+    - robotkb
+
+services:
+  embedding:
+    <<: *inference-base
+    build:
+      context: .
+      dockerfile: docker/embedding.Dockerfile
+    container_name: robotkb-embedding
+    ports:
+      - "8001:8001"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      # Model paths inside the container (override in .env if needed)
+      - KB_EMBEDDING_MODEL_PATH=/models/bge-m3/model.onnx
+      - KB_EMBEDDING_TOKENIZER_PATH=/models/bge-m3
+      - KB_EMBEDDING_EXECUTION_PROVIDER=CUDAExecutionProvider
+      - KB_EMBEDDING_MAX_BATCH_SIZE=16
+      - KB_EMBEDDING_MAX_WAIT_MS=50
+      - KB_EMBEDDING_MAX_TOKEN_LENGTH=512
+      - KB_EMBEDDING_PORT=8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s     # model loading can take ~30s on first boot
+
+  reranker:
+    <<: *inference-base
+    build:
+      context: .
+      dockerfile: docker/reranker.Dockerfile
+    container_name: robotkb-reranker
+    ports:
+      - "8002:8002"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - KB_RERANKER_MODEL_PATH=/models/bge-reranker-v2-m3/model.onnx
+      - KB_RERANKER_TOKENIZER_PATH=/models/bge-reranker-v2-m3
+      - KB_RERANKER_EXECUTION_PROVIDER=CUDAExecutionProvider
+      - KB_RERANKER_MAX_BATCH_SIZE=8
+      - KB_RERANKER_MAX_WAIT_MS=50
+      - KB_RERANKER_MAX_TOKEN_LENGTH=512
+      - KB_RERANKER_PORT=8002
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Storage Services (Stage 3) ───────────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: robotkb-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-robotkb}
+      - POSTGRES_USER=${POSTGRES_USER:-robotkb}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - robotkb
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: robotkb-meilisearch
+    restart: unless-stopped
+    environment:
+      - MEILI_ENV=production
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-changeme}
+      - MEILI_DB_PATH=/meili_data
+    volumes:
+      - meili_data:/meili_data
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7700/health | grep -q available"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - robotkb
+
+  minio:
+    image: minio/minio:latest
+    container_name: robotkb-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-changeme}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - robotkb
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: robotkb-minio-init
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-changeme}
+      - MINIO_BUCKET=${MINIO_BUCKET:-robotkb}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/$$MINIO_BUCKET &&
+      echo 'MinIO bucket ready: '$$MINIO_BUCKET
+      "
+    networks:
+      - robotkb
+
+  # ── Graph Service (Stage 4) — start with: docker compose up -d neo4j ────────
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: robotkb-neo4j
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/changeme}
+      - NEO4J_server_memory_heap_initial__size=2G
+      - NEO4J_server_memory_heap_max__size=4G
+      - NEO4J_server_memory_pagecache__size=2G
+    volumes:
+      - neo4j_data:/data
+      - ./infra/neo4j/init:/var/lib/neo4j/import:ro
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - robotkb
+
+  # ── Message Broker (Stage 7) — start with: docker compose up -d redis ────────
+
+  redis:
+    image: redis:7-alpine
+    container_name: robotkb-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-changeme}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - robotkb
+
+networks:
+  robotkb:
+    name: robotkb
+
+volumes:
+  pg_data:
+    name: robotkb_pg_data
+  meili_data:
+    name: robotkb_meili_data
+  minio_data:
+    name: robotkb_minio_data
+  neo4j_data:
+    name: robotkb_neo4j_data
+  redis_data:
+    name: robotkb_redis_data

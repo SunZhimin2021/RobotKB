@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robotkb"
+version = "0.1.0"
+description = "机器人开发知识库系统"
+requires-python = ">=3.10"
+dependencies = [
+    # Core
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "python-json-logger>=2.0",
+    # M08 Storage — PostgreSQL/pgvector, Meilisearch (via httpx), Neo4j, MinIO
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "greenlet>=3.0",
+    "httpx>=0.27",
+    "neo4j>=5.0",
+    "minio>=7.0",
+    # M04 Constraint Engine
+    "pyahocorasick>=2.0",
+    "pyyaml>=6.0",
+    "packaging>=24.0",
+    # M05 ETL Worker
+    "celery[redis]>=5.3",
+    "redis[hiredis]>=5.0",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+    # M01 / M02 Servers
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.29",
+    "python-multipart>=0.0.9",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+    "aiofiles>=23.0",
+    "mcp>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "pytest-mock>=3.14",
+    "aiosqlite>=0.20",
+    "fakeredis[aioredis]>=2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*"]
