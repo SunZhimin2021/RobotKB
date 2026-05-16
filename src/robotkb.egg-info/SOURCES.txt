@@ -1,9 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-src/common/__init__.py
-src/robotkb.egg-info/PKG-INFO
-src/robotkb.egg-info/SOURCES.txt
-src/robotkb.egg-info/dependency_links.txt
-src/robotkb.egg-info/requires.txt
-src/robotkb.egg-info/top_level.txt
