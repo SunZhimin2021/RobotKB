@@ -1,0 +1,55 @@
+chips:
+  - id: rk3588
+    names: ["RK3588", "瑞芯微3588", "rk3588"]
+    family: rockchip
+  - id: rk3588s
+    names: ["RK3588S", "RK3588S2", "rk3588s"]
+    family: rockchip
+    parent: rk3588
+  - id: rk3568
+    names: ["RK3568", "rk3568"]
+    family: rockchip
+  - id: rk3399
+    names: ["RK3399", "rk3399"]
+    family: rockchip
+  - id: rk3328
+    names: ["RK3328", "rk3328"]
+    family: rockchip
+  - id: rk3288
+    names: ["RK3288", "rk3288"]
+    family: rockchip
+  - id: jetson_agx_orin
+    names: ["Jetson AGX Orin", "AGX Orin", "jetson-agx-orin"]
+    family: nvidia_jetson
+  - id: jetson_orin_nx
+    names: ["Jetson Orin NX", "Orin NX", "jetson-orin-nx"]
+    family: nvidia_jetson
+    parent: jetson_agx_orin
+  - id: jetson_orin_nano
+    names: ["Jetson Orin Nano", "Orin Nano", "jetson-orin-nano"]
+    family: nvidia_jetson
+    parent: jetson_agx_orin
+  - id: jetson_nano
+    names: ["Jetson Nano", "jetson-nano"]
+    family: nvidia_jetson
+  - id: jetson_xavier_nx
+    names: ["Jetson Xavier NX", "Xavier NX", "jetson-xavier-nx"]
+    family: nvidia_jetson
+  - id: imx8mp
+    names: ["iMX8MP", "i.MX8M Plus", "imx8mp"]
+    family: nxp
+  - id: imx8mq
+    names: ["iMX8MQ", "i.MX8M Quad", "imx8mq"]
+    family: nxp
+  - id: am62x
+    names: ["AM62x", "AM6254", "am62x"]
+    family: ti
+  - id: stm32mp1
+    names: ["STM32MP1", "STM32MP157", "stm32mp1"]
+    family: st
+  - id: bcm2711
+    names: ["BCM2711", "bcm2711", "Raspberry Pi 4"]
+    family: broadcom
+  - id: bcm2712
+    names: ["BCM2712", "bcm2712", "Raspberry Pi 5"]
+    family: broadcom

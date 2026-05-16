@@ -1,0 +1,34 @@
+boards:
+  - id: rock5b
+    names: ["Rock 5B", "ROCK 5B", "rock5b"]
+    chip_id: rk3588
+  - id: orangepi5
+    names: ["Orange Pi 5", "OrangePi5", "orangepi5"]
+    chip_id: rk3588
+  - id: nanopc_t6
+    names: ["NanoPC-T6", "T6", "nanopc-t6"]
+    chip_id: rk3588
+  - id: rock5a
+    names: ["Rock 5A", "ROCK 5A", "rock5a"]
+    chip_id: rk3588s
+  - id: orangepi5_plus
+    names: ["Orange Pi 5 Plus", "OrangePi5Plus", "orangepi5-plus"]
+    chip_id: rk3588
+  - id: jetson_agx_orin_devkit
+    names: ["Jetson AGX Orin 开发套件", "Orin DevKit", "jetson-agx-orin-devkit"]
+    chip_id: jetson_agx_orin
+  - id: jetson_orin_nx_devkit
+    names: ["Jetson Orin NX 开发套件", "Orin NX DevKit", "jetson-orin-nx-devkit"]
+    chip_id: jetson_orin_nx
+  - id: jetson_nano_devkit
+    names: ["Jetson Nano 开发套件", "Jetson Nano DevKit", "jetson-nano-devkit"]
+    chip_id: jetson_nano
+  - id: maaxboard
+    names: ["MaaXBoard", "maaxboard", "Avnet MaaXBoard"]
+    chip_id: imx8mq
+  - id: raspberrypi4b
+    names: ["Raspberry Pi 4B", "RPi 4B", "rpi4b"]
+    chip_id: bcm2711
+  - id: raspberrypi5
+    names: ["Raspberry Pi 5", "RPi 5", "rpi5"]
+    chip_id: bcm2712
